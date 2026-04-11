@@ -69,9 +69,11 @@ def generate_plot(df):
     ax1.set_ylim(0, 20)
     
     # Temp and Wind as lines
-    ax2.plot(df['time'], df['temp'], color='#ff9900', linewidth=2.5, label='Temp (°C)')
+   
     ax2.plot(df['time'], df['wind'], color='#00ff00', linewidth=1.5, linestyle='--', label='Wind (km/h)')
     ax2.set_ylabel('Temp (°C) / Wind (km/h)', color='#ff9900', fontsize=12)
+
+     ax3.plot(df['time'], df['temp'], color='#ff9900', linewidth=2.5, label='Temp (°C)')
 
     plt.title(f"Nelson/Richmond Forecast (Met.no Data)\nUpdated: {datetime.now().strftime('%d %b %H:%M')}", fontsize=16)
     
