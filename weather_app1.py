@@ -35,18 +35,18 @@ def get_weather_data():
             # Extracting the timeseries data
             timeseries = data['properties']['timeseries']
             
-rows = []
-for entry in timeseries[:240]:
-    # Everything inside the loop must be indented 4 spaces
-    row = {
-        'time': entry['time'],
-        'wind': entry['data']['instant']['details']['wind_speed'] * 3.6, # m/s to km/h
-        'rain': (
-            entry['data'].get('next_1_hours', {}).get('details', {}).get('precipitation_amount') or 
-            entry['data'].get('next_6_hours', {}).get('details', {}).get('precipitation_amount') or 0
-        )
-    }
-    rows.append(row)
+        rows = []
+        for entry in timeseries[:240]:
+            # Everything inside the loop must be indented 4 spaces
+            row = {
+                'time': entry['time'],
+                'wind': entry['data']['instant']['details']['wind_speed'] * 3.6, # m/s to km/h
+                'rain': (
+                    entry['data'].get('next_1_hours', {}).get('details', {}).get('precipitation_amount') or 
+                    entry['data'].get('next_6_hours', {}).get('details', {}).get('precipitation_amount') or 0
+                )
+            }
+            rows.append(row)
             
             return pd.DataFrame(rows)
         else:
