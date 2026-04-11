@@ -59,7 +59,7 @@ def generate_plot(df):
         print("CRITICAL: Failed to retrieve data. Check your User-Agent header.")
         return
         
-    df['time'] = pd.to_datetime(df['time'])
+    df['time'] = df['time'].dt.strftime('%I:%M %p')
     
     plt.style.use('dark_background')
     fig, ax1 = plt.subplots(figsize=(15, 8))
