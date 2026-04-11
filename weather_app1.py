@@ -34,7 +34,7 @@ def get_weather_data():
             timeseries = data['properties']['timeseries']
             
             rows = []
-            for entry in timeseries[:72]:  # Get next 5 days (approx 120 hours)
+            for entry in timeseries[:48]:  # Get next 5 days (approx 120 hours)
                 row = {
                     'time': entry['time'],
                     'wind': entry['data']['instant']['details']['wind_speed'] * 3.6, # Convert m/s to km/h
@@ -63,9 +63,9 @@ def generate_plot(df):
     fig, ax1 = plt.subplots(figsize=(15, 8))
     ax2 = ax1.twinx()
 
-    ax1.xaxis.set_major_locator(mdates.HourLocator(interval=8))
+    ax1.xaxis.set_major_locator(mdates.HourLocator(interval=4))
     ax1.grid(True, which='major', linestyle='--', alpha=0.3, color='gray')
-    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%a %d'))
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%a %d %I %p'))
     ax1.tick_params(axis='x', rotation=45)
     fig.tight_layout() 
     
@@ -75,7 +75,7 @@ def generate_plot(df):
     
    
     ax2.plot(df['time'], df['wind'], color='#00ff00', linewidth=1.5, linestyle='--', label='Wind (km/h)')
-    ax2.set_ylabel('Wind (km/h)', color='#ff9900', fontsize=12)
+    ax2.set_ylabel('Wind (km/h)', color='#00ff00', fontsize=12)
 
 
     plt.title(f"Nelson/Richmond Forecast (Met.no Data)\nUpdated: {datetime.now().strftime('%d %b %H:%M')}", fontsize=16)
