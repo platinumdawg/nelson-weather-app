@@ -24,13 +24,7 @@ jobs:
         run: python weather_app1.py
 
       - name: Commit and push changes
-        run: |
-          git config --global user.name "WeatherBot"
-          git config --global user.email "bot@github.com"
-          git add weather_update.png
-          git commit -m "Hourly weather update" || exit 0
-          git push
-                - name: Commit and push changes
+    
         run: |
           git config --global user.name "WeatherBot"
           git config --global user.email "bot@github.com"
