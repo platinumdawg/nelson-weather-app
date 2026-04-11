@@ -1,5 +1,5 @@
 import openmeteo_requests
-import requests_cache
+import requests
 import pandas as pd
 from retry_requests import retry
 import matplotlib.pyplot as plt
@@ -7,9 +7,8 @@ from datetime import datetime
 import os
 import glob
 
-# 1. Setup the Open-Meteo API client with cache and retry on error
-cache_session = requests_cache.CachedSession('.cache', expire_after=3600)
-retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
+# 1. Setup the Open-Meteo API client with retry only (avoiding file cache issues)
+retry_session = retry(requests.Session(), retries=5, backoff_factor=0.2)
 openmeteo = openmeteo_requests.Client(session=retry_session)
 
 # Richmond Coordinates
@@ -27,26 +26,30 @@ def get_weather_data():
     }
     
     try:
-        # The library handles the connection and parsing
         responses = openmeteo.weather_api(url, params=params)
         response = responses[0]
 
         # Process hourly data
         hourly = response.Hourly()
-        hourly_precipitation = hourly.Variables(0).ValuesAsNumpy()
-        hourly_wind_speed_10m = hourly.Variables(1).ValuesAsNumpy()
-        hourly_temperature_2m = hourly.Variables(2).ValuesAsNumpy()
+        # Note: Indexing must match the order in 'params' above
+        precip = hourly.Variables(0).ValuesAsNumpy()
+        wind = hourly.Variables(1).ValuesAsNumpy()
+        temp = hourly.Variables(2).ValuesAsNumpy()
 
+        # Generate the time range
+        start = pd.to_datetime(hourly.Time(), unit="s", utc=True).tz_convert("Pacific/Auckland")
+        end = pd.to_datetime(hourly.TimeEnd(), unit="s", utc=True).tz_convert("Pacific/Auckland")
+        
         hourly_data = {
             "date": pd.date_range(
-                start=pd.to_datetime(hourly.Time(), unit="s", utc=True),
-                end=pd.to_datetime(hourly.TimeEnd(), unit="s", utc=True),
+                start=start,
+                end=end,
                 freq=pd.Timedelta(seconds=hourly.Interval()),
                 inclusive="left"
             ),
-            "precipitation": hourly_precipitation,
-            "wind_speed_10m": hourly_wind_speed_10m,
-            "temperature_2m": hourly_temperature_2m
+            "precipitation": precip,
+            "wind_speed_10m": wind,
+            "temperature_2m": temp
         }
 
         return pd.DataFrame(data=hourly_data)
