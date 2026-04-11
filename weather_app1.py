@@ -36,7 +36,7 @@ def get_weather_data():
             timeseries = data['properties']['timeseries']
             
             rows = []
-            for entry in timeseries[:48]:  
+            for entry in timeseries[:240]:  
                 row = {
                     'time': entry['time'],
                     'wind': entry['data']['instant']['details']['wind_speed'] * 3.6, # Convert m/s to km/h
@@ -66,7 +66,7 @@ def generate_plot(df):
     ax2 = ax1.twinx()
 
 
-    ax1.xaxis.set_major_locator(mdates.HourLocator(interval=3))
+    ax1.xaxis.set_major_locator(mdates.HourLocator(interval=8))
     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%a %d\n%I %p'))
     ax1.plot(df['time'], df['rain'], color='#44aaff', alpha=0.6, label='Rain (mm/h)')
     ax1.set_ylabel('Rain (mm)', color='#44aaff', fontsize=12)
