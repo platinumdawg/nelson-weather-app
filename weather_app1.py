@@ -1,16 +1,22 @@
 import openmeteo_requests
 import requests_cache
-import pandas as pd
 from retry_requests import retry
-import matplotlib.pyplot as plt
-from datetime import datetime, timedelta
+import pandas as pd
 import os
-import glob
 
-# 1. Setup the Open-Meteo API client with cache and retry
+# --- ADD THIS TO YOUR SCRIPT ---
+# Clear old cache files to prevent buffer errors
+if os.path.exists(".cache.sqlite"):
+    os.remove(".cache.sqlite")
+# ------------------------------
+
+# Setup the client
 cache_session = requests_cache.CachedSession('.cache', expire_after=3600)
 retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
 openmeteo = openmeteo_requests.Client(session=retry_session)
+
+# ... [Rest of your existing code remains the same] ...
+
 
 LOCATIONS = [
     {"name": "Nelson Central", "lat": -41.2706, "lon": 173.2840},
