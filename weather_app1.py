@@ -64,7 +64,7 @@ def generate_plot(df):
     ax2 = ax1.twinx()
 
     # Rain as bars (better for visibility)
-    ax1.bar(df['time'], df['rain'], color='#44aaff', alpha=0.6, label='Rain (mm/h)')
+    ax1.plot(df['time'], df['rain'], color='#44aaff', alpha=0.6, label='Rain (mm/h)')
     ax1.set_ylabel('Rain (mm)', color='#44aaff', fontsize=12)
     
     # Temp and Wind as lines
