@@ -10,94 +10,94 @@ import glob
 LAT, LON = -41.3384, 173.1843
 
 def get_weather_data():
-    """Fetches 5-day forecast data from Met.no (Yr.no)."""
-    api_url = "https://met.no"
+    """Tries Met.no first, then falls back to Open-Meteo if blocked."""
     
-    # Required custom User-Agent to prevent GitHub network blocks
-    headers = {
-        'User-Agent': 'NelsonWeatherBot/1.0 yourname@example.com'
-    }
-    
-    params = {
-        'lat': round(LAT, 4),
-        'lon': round(LON, 4)
-    }
+    # 1. MET.NO (Yr.no) Attempt
+    url_met = "https://met.no"
+    # MUST be unique to your project
+    headers_met = {'User-Agent': 'RichmondWeatherAppProject/1.1 ://github.com'}
+    params_met = {'lat': round(LAT, 4), 'lon': round(LON, 4)}
 
     try:
-        print(f"Connecting to Met.no for Richmond weather...")
-        response = requests.get(api_url, params=params, headers=headers, timeout=20)
-        
-        if response.status_code == 200:
-            data = response.json()
-            timeseries = data['properties']['timeseries']
-            
+        print("Connecting to Met.no...")
+        resp = requests.get(url_met, params=params_met, headers=headers_met, timeout=15)
+        if resp.status_code == 200:
+            data = resp.json()
             rows = []
-            for entry in timeseries[:120]:  # Next ~5 days of hourly data
-                row = {
+            for entry in data['properties']['timeseries'][:120]:
+                rows.append({
                     'time': entry['time'],
                     'temp': entry['data']['instant']['details']['air_temperature'],
-                    'wind': entry['data']['instant']['details']['wind_speed'] * 3.6, # m/s to km/h
+                    'wind': entry['data']['instant']['details']['wind_speed'] * 3.6,
                     'rain': entry['data'].get('next_1_hours', {}).get('details', {}).get('precipitation_amount', 0)
-                }
-                rows.append(row)
-            
+                })
             return pd.DataFrame(rows)
-        else:
-            print(f"API Error: {response.status_code}")
-            return None
-            
     except Exception as e:
-        print(f"Network error: {e}")
-        return None
+        print(f"Met.no failed: {e}")
+
+    # 2. OPEN-METEO Fallback (Fixed API URL)
+    url_om = "https://open-meteo.com"
+    params_om = {
+        "latitude": LAT, "longitude": LON,
+        "hourly": "precipitation,temperature_2m,wind_speed_10m",
+        "wind_speed_unit": "kmh", "timezone": "Pacific/Auckland", "forecast_days": 5
+    }
+    
+    try:
+        print("Falling back to Open-Meteo...")
+        resp = requests.get(url_om, params=params_om, timeout=15)
+        if resp.status_code == 200:
+            d = resp.json()['hourly']
+            return pd.DataFrame({
+                'time': d['time'], 'temp': d['temperature_2m'],
+                'wind': d['wind_speed_10m'], 'rain': d['precipitation']
+            })
+    except Exception as e:
+        print(f"Open-Meteo fallback also failed: {e}")
+
+    return None
 
 def generate_plot(df):
-    """Generates the weather chart with custom scales and date formatting."""
     if df is None or df.empty:
-        print("CRITICAL: Failed to retrieve data.")
+        print("CRITICAL: All data sources failed.")
         return
         
     df['time'] = pd.to_datetime(df['time'])
-    
     plt.style.use('dark_background')
     fig, ax1 = plt.subplots(figsize=(15, 8))
-    
-    # Secondary axis for Rain
     ax2 = ax1.twinx()
 
-    # LEFT AXIS: Temp (solid) and Wind (dashed)
+    # Left Axis: Temp & Wind
     ax1.plot(df['time'], df['temp'], color='#ff9900', linewidth=3, label='Temp (°C)')
     ax1.plot(df['time'], df['wind'], color='#00ff00', linewidth=1.5, linestyle='--', label='Wind (km/h)')
     ax1.set_ylabel('Temp (°C) & Wind (km/h)', fontsize=12)
     ax1.grid(True, alpha=0.1)
 
-    # RIGHT AXIS: Rain (Blue line with max 20mm)
+    # Right Axis: Rain (Locked at 20mm)
     ax2.plot(df['time'], df['rain'], color='#44aaff', linewidth=2, label='Rain (mm/h)')
     ax2.set_ylabel('Rainfall (mm)', color='#44aaff', fontsize=12)
-    ax2.set_ylim(0, 20)  # Lock max rain to 20mm
+    ax2.set_ylim(0, 20)
     ax2.fill_between(df['time'], df['rain'], color='#44aaff', alpha=0.15)
 
-    # X-AXIS: Format to show Day (Mon, Tue) + Date
-    # Removed 2026/year as requested
+    # Formatting: Days (Mon, Tue) only
     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%a %d %b'))
-    plt.xticks(rotation=0)
-
-    # Title and Legend
-    plt.title(f"Nelson/Richmond Forecast\nUpdated: {datetime.now().strftime('%a %d %b %H:%M')}", fontsize=16)
     
-    lines1, labels1 = ax1.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
+    plt.title(f"Richmond/Nelson Forecast\nUpdated: {datetime.now().strftime('%a %H:%M')}", fontsize=16)
+    
+    h1, l1 = ax1.get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    ax1.legend(h1 + h2, l1 + l2, loc='upper left')
 
     plt.tight_layout()
     plt.savefig("weather_latest.png")
     print("Success! Created 'weather_latest.png'.")
 
 if __name__ == "__main__":
-    # Clean up old images before running
     for f in glob.glob("weather_*.png"):
         if "latest" not in f:
             try: os.remove(f)
             except: pass
             
-    weather_df = get_weather_data()
-    generate_plot(weather_df)
+    data = get_weather_data()
+    generate_plot(data)
+
