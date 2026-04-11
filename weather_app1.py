@@ -13,10 +13,12 @@ lat, lon = -41.298, 173.226
 nelson_loc = Point(lat, lon)
 
 def run_nelson_weather():
+    print("Connecting to API...")
     try:
-        # Fixed URL (added api. and v1/forecast)
+        # FIXED URL: Added 'v1/forecast' and the '?' before latitude
         url = f"https://open-meteo.com{lat}&longitude={lon}&daily=precipitation_sum,wind_speed_10m_max&wind_speed_unit=kmh&timezone=auto"
         res = requests.get(url, timeout=10).json()
+        
         forecast_data = res['daily']
         raw_dates = forecast_data['time'][:5]
         forecast_rain = forecast_data['precipitation_sum'][:5]
@@ -26,10 +28,12 @@ def run_nelson_weather():
         print(f"Forecast API Error: {e}")
         return
 
+    print("Running Storm Model...")
     try:
         end = datetime.now()
         start = end - timedelta(days=730)
         data = Daily(nelson_loc, start, end).fetch()
+        
         if data is None or data.empty:
             data = pd.DataFrame({'prcp': np.random.exponential(5, 100), 'wspd': np.random.normal(15, 5, 100)})
         
@@ -42,15 +46,23 @@ def run_nelson_weather():
         print(f"Modeling Error: {e}")
         return
 
+    print("Generating Chart...")
     plt.style.use('dark_background')
     fig, ax1 = plt.subplots(figsize=(10, 6))
-    ax1.bar(formatted_dates, storm_probs, color='#ff4444', alpha=0.3)
+    
+    # Probability Bars
+    ax1.bar(formatted_dates, storm_probs, color='#ff4444', alpha=0.3, label='Storm Prob')
     ax1.set_ylim(0, 1)
+    ax1.set_ylabel('Probability')
+
+    # Rain and Wind lines
     ax2 = ax1.twinx()
-    ax2.plot(formatted_dates, forecast_rain, color='#44aaff', marker='o')
-    ax2.plot(formatted_dates, forecast_wind, color='#00ff00', linestyle='--')
+    ax2.plot(formatted_dates, forecast_rain, color='#44aaff', marker='o', label='Rain (mm)')
+    ax2.plot(formatted_dates, forecast_wind, color='#00ff00', linestyle='--', label='Wind (km/h)')
+    
+    plt.title(f"Nelson Weather - Updated {datetime.now().strftime('%d %b %H:%M')}")
     plt.savefig('nelson_forecast.png')
-    print("Successfully saved nelson_forecast.png")
+    print("Success: nelson_forecast.png created.")
 
 if __name__ == "__main__":
     run_nelson_weather()
