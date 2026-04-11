@@ -1,6 +1,7 @@
 import requests
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 from datetime import datetime
 import os
 import glob
@@ -9,11 +10,10 @@ import glob
 LAT, LON = -41.3384, 173.1843
 
 def get_weather_data():
-    # Met.no API (Yr.no) is very stable for GitHub runners
-    api_url = "https://api.met.no/weatherapi/locationforecast/2.0/compact"
+    """Fetches 5-day forecast data from Met.no (Yr.no)."""
+    api_url = "https://met.no"
     
-    # REQUIRED: Use a unique User-Agent to avoid the 'char 0' block
-    # format: "AppName/Version contact@email.com"
+    # Required custom User-Agent to prevent GitHub network blocks
     headers = {
         'User-Agent': 'NelsonWeatherBot/1.0 yourname@example.com'
     }
@@ -29,23 +29,21 @@ def get_weather_data():
         
         if response.status_code == 200:
             data = response.json()
-            # Extracting the timeseries data
             timeseries = data['properties']['timeseries']
             
             rows = []
-            for entry in timeseries[:120]:  # Get next 5 days (approx 120 hours)
+            for entry in timeseries[:120]:  # Next ~5 days of hourly data
                 row = {
                     'time': entry['time'],
                     'temp': entry['data']['instant']['details']['air_temperature'],
-                    'wind': entry['data']['instant']['details']['wind_speed'] * 3.6, # Convert m/s to km/h
+                    'wind': entry['data']['instant']['details']['wind_speed'] * 3.6, # m/s to km/h
                     'rain': entry['data'].get('next_1_hours', {}).get('details', {}).get('precipitation_amount', 0)
                 }
                 rows.append(row)
             
             return pd.DataFrame(rows)
         else:
-            print(f"Block detected: {response.status_code}")
-            print(f"Content: {response.text[:100]}")
+            print(f"API Error: {response.status_code}")
             return None
             
     except Exception as e:
@@ -53,28 +51,39 @@ def get_weather_data():
         return None
 
 def generate_plot(df):
+    """Generates the weather chart with custom scales and date formatting."""
     if df is None or df.empty:
-        print("CRITICAL: Failed to retrieve data. Check your User-Agent header.")
+        print("CRITICAL: Failed to retrieve data.")
         return
         
     df['time'] = pd.to_datetime(df['time'])
     
     plt.style.use('dark_background')
     fig, ax1 = plt.subplots(figsize=(15, 8))
+    
+    # Secondary axis for Rain
     ax2 = ax1.twinx()
 
-    # Rain as bars (better for visibility)
-    ax1.bar(df['time'], df['rain'], color='#44aaff', alpha=0.6, label='Rain (mm/h)')
-    ax1.set_ylabel('Rain (mm)', color='#44aaff', fontsize=12)
-    
-    # Temp and Wind as lines
-    ax2.plot(df['time'], df['temp'], color='#ff9900', linewidth=2.5, label='Temp (°C)')
-    ax2.plot(df['time'], df['wind'], color='#00ff00', linewidth=1.5, linestyle='--', label='Wind (km/h)')
-    ax2.set_ylabel('Temp (°C) / Wind (km/h)', color='#ff9900', fontsize=12)
+    # LEFT AXIS: Temp (solid) and Wind (dashed)
+    ax1.plot(df['time'], df['temp'], color='#ff9900', linewidth=3, label='Temp (°C)')
+    ax1.plot(df['time'], df['wind'], color='#00ff00', linewidth=1.5, linestyle='--', label='Wind (km/h)')
+    ax1.set_ylabel('Temp (°C) & Wind (km/h)', fontsize=12)
+    ax1.grid(True, alpha=0.1)
 
-    plt.title(f"Nelson/Richmond Forecast (Met.no Data)\nUpdated: {datetime.now().strftime('%d %b %H:%M')}", fontsize=16)
+    # RIGHT AXIS: Rain (Blue line with max 20mm)
+    ax2.plot(df['time'], df['rain'], color='#44aaff', linewidth=2, label='Rain (mm/h)')
+    ax2.set_ylabel('Rainfall (mm)', color='#44aaff', fontsize=12)
+    ax2.set_ylim(0, 20)  # Lock max rain to 20mm
+    ax2.fill_between(df['time'], df['rain'], color='#44aaff', alpha=0.15)
+
+    # X-AXIS: Format to show Day (Mon, Tue) + Date
+    # Removed 2026/year as requested
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%a %d %b'))
+    plt.xticks(rotation=0)
+
+    # Title and Legend
+    plt.title(f"Nelson/Richmond Forecast\nUpdated: {datetime.now().strftime('%a %d %b %H:%M')}", fontsize=16)
     
-    # Legend
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
@@ -84,7 +93,7 @@ def generate_plot(df):
     print("Success! Created 'weather_latest.png'.")
 
 if __name__ == "__main__":
-    # Clean up old local png files
+    # Clean up old images before running
     for f in glob.glob("weather_*.png"):
         if "latest" not in f:
             try: os.remove(f)
