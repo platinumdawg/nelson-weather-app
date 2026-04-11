@@ -14,16 +14,24 @@ def get_weather_data():
         print("CRITICAL ERROR: WEATHER_API_KEY secret is missing!")
         return None
         
-    # WeatherAPI 5-day forecast (includes hourly data)
-    url = f"http://weatherapi.com{API_KEY}&q={LAT},{LON}&days=5&aqi=no&alerts=no"
+    # FIXED URL: Using https and proper parameter separation
+    url = "https://weatherapi.com"
+    params = {
+        "key": API_KEY,
+        "q": f"{LAT},{LON}",
+        "days": 5,
+        "aqi": "no",
+        "alerts": "no"
+    }
     
     try:
-        response = requests.get(url, timeout=25)
+        # We pass params separately so 'requests' builds the URL perfectly for us
+        response = requests.get(url, params=params, timeout=25)
+        
         if response.status_code == 200:
             data = response.json()
             hourly_list = []
             
-            # Extract hourly data from the nested JSON response
             for day in data['forecast']['forecastday']:
                 for hour in day['hour']:
                     hourly_list.append({
