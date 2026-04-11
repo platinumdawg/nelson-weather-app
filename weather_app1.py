@@ -33,7 +33,7 @@ def get_weather_data():
             timeseries = data['properties']['timeseries']
             
             rows = []
-            for entry in timeseries[:120]:  # Get next 5 days (approx 120 hours)
+            for entry in timeseries[:72]:  # Get next 5 days (approx 120 hours)
                 row = {
                     'time': entry['time'],
                     'temp': entry['data']['instant']['details']['air_temperature'],
@@ -73,8 +73,8 @@ def generate_plot(df):
 
     ax3 = ax1.twinx()
     ax3.spines['right'].set_position(('outward', 60))
-    ax3.scatter(df['time'], df['temp'], color='#ff9900', s=30, label='Temp (°C)')
-    ax3.set_ylabel('Temp (°C)', color='#ff9900', fontsize=12)
+    ax3.plot(df['time'], df['temp'], color='#ffcc66', linewidth=2.0, label='Temp (°C)')
+    ax3.set_ylabel('Temp (°C)', color='#ffcc66', fontsize=12)
 
     plt.title(f"Nelson/Richmond Forecast (Met.no Data)\nUpdated: {datetime.now().strftime('%d %b %H:%M')}", fontsize=16)
     
