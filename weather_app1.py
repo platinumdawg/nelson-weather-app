@@ -4,40 +4,30 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import os
 import glob
+import json
 
-# 1. Configuration
 API_KEY = os.getenv('WEATHER_API_KEY')
-# Use Richmond, NZ Coordinates
 LAT, LON = -41.3384, 173.1843
 
 def get_weather_data():
     if not API_KEY:
-        print("CRITICAL ERROR: WEATHER_API_KEY secret is missing!")
         return None
         
-    # Official WeatherAPI Forecast Endpoint
-    url = "https://weatherapi.com"
+    # 1. Build the target URL
+    target_url = f"https://weatherapi.com{API_KEY}&q={LAT},{LON}&days=5"
     
-    # Passing parameters through the params dictionary is safer
-    params = {
-        "key": API_KEY,
-        "q": f"{LAT},{LON}",
-        "days": 5,
-        "aqi": "no",
-        "alerts": "no"
-    }
-    
-    # Adding a User-Agent helps bypass some automated firewalls
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    }
+    # 2. Wrap it in a Proxy (AllOrigins) to hide the GitHub IP
+    proxy_url = f"https://allorigins.win{requests.utils.quote(target_url)}"
     
     try:
-        # We explicitly use verify=True (default) to ensure SSL is working
-        response = requests.get(url, params=params, headers=headers, timeout=30)
+        # Request via proxy
+        response = requests.get(proxy_url, timeout=30)
         
         if response.status_code == 200:
-            data = response.json()
+            # AllOrigins returns a JSON with a 'contents' string
+            content_str = response.json()['contents']
+            data = json.loads(content_str)
+            
             hourly_list = []
             for day in data['forecast']['forecastday']:
                 for hour in day['hour']:
@@ -49,14 +39,14 @@ def get_weather_data():
                     })
             return pd.DataFrame(hourly_list)
         else:
-            print(f"API Error {response.status_code}: {response.text}")
+            print(f"Proxy failed: {response.status_code}")
     except Exception as e:
-        print(f"Network Connection Failed: {e}")
+        print(f"Connection failed even with proxy: {e}")
     return None
 
 def generate_plot(df):
     if df is None or df.empty:
-        print("No data available to plot.")
+        print("No data received.")
         return
         
     df['time'] = pd.to_datetime(df['time'])
@@ -64,7 +54,6 @@ def generate_plot(df):
     fig, ax1 = plt.subplots(figsize=(15, 8))
     ax2 = ax1.twinx()
 
-    # Plot Lines
     ax1.plot(df['time'], df['precip_mm'], color='#44aaff', linewidth=2, label='Rain (mm/h)')
     ax2.plot(df['time'], df['wind_kph'], color='#00ff00', linewidth=2, label='Wind (km/h)')
     ax2.plot(df['time'], df['temp_c'], color='#ff9900', linewidth=2.5, label='Temp (°C)')
@@ -77,15 +66,13 @@ def generate_plot(df):
 
     plt.tight_layout()
     plt.savefig("weather_latest.png")
-    print("Success: weather_latest.png updated.")
+    print("Success: weather_latest.png updated via Proxy!")
 
 if __name__ == "__main__":
-    # Clean up old weather images
     for f in glob.glob("weather_*.png"):
         if "latest" not in f:
             try: os.remove(f)
             except: pass
             
-    # Run process
     data = get_weather_data()
     generate_plot(data)
