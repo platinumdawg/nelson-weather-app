@@ -1,25 +1,33 @@
-name: Daily Weather Update
+name: Update Weather Forecast
+
 on:
   schedule:
-    - cron: '0 20 * * *' # Runs every morning at 8am NZ time
-  workflow_dispatch:      # Lets you run it manually to test
+    - cron: '0 20 * * *' # Runs daily at 8PM UTC (adjust for Nelson time)
+  workflow_dispatch:      # Allows you to run it manually
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-      - name: Install Tools
-        run: pip install -r requirements.txt
-      - name: Run Weather App
-        run: python weather_script.py
-      - name: Save the Image
+
+      - name: Install dependencies
+        run: |
+          pip install requests pandas numpy matplotlib meteostat scikit-learn
+
+      - name: Run script
+        run: python weather_app.py
+
+      - name: Commit and push chart
         run: |
           git config --global user.name "WeatherBot"
           git config --global user.email "bot@github.com"
           git add nelson_forecast.png
-          git commit -m "Update weather graph" || exit 0
+          git commit -m "Update weather chart" || exit 0
           git push
