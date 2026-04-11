@@ -40,7 +40,10 @@ def get_weather_data():
                 row = {
                     'time': entry['time'],
                     'wind': entry['data']['instant']['details']['wind_speed'] * 3.6, # Convert m/s to km/h
-                    'rain': entry['data'].get('next_1_hours', {}).get('details', {}).get('precipitation_amount', 0)
+                    'rain = (
+                     data.get('next_1_hours', {}).get('details', {}).get('precipitation_amount') or
+                     data.get('next_6_hours', {}).get('details', {}).get('precipitation_amount') or 0)
+
                 }
                 rows.append(row)
             
