@@ -65,7 +65,9 @@ def generate_plot(df):
     fig, ax1 = plt.subplots(figsize=(15, 8))
     ax2 = ax1.twinx()
 
-    ax1.xaxis.set_major_locator(mdates.HourLocator(interval=3))
+    ax1.fig.update_xaxes(
+    dtick=14400000, 
+    tickformat="%a %d\n%I %p" )
     ax1.grid(True, which='major', linestyle='--', alpha=0.3, color='gray')
     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%a %d %p'))
     ax1.tick_params(axis='x', rotation=45)
