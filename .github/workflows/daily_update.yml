@@ -2,41 +2,43 @@ name: Hourly Weather Update
 
 on:
   schedule:
-    - cron: '23 * * * *' # Runs at 23 minutes past the hour to avoid traffic
-  workflow_dispatch:      # Allows you to run it manually
+    - cron: '23 * * * *' 
+  workflow_dispatch:      
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest # Using 'latest' ensures you get stable updates
     permissions:
       contents: write
       
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Ensures the bot has full context to push changes
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.9'
+          cache: 'pip' # Speeds up subsequent runs by caching dependencies
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests pandas matplotlib
+          pip install requests pandas matplotlib pytz # Added pytz for NZ Timezone
 
       - name: Run weather script
         env:
           WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
+          TZ: "Pacific/Auckland" # Forces the system clock to NZ time for the script
         run: python weather_app1.py
 
       - name: Commit and push changes
         run: |
           git config --global user.name "WeatherBot"
           git config --global user.email "bot@github.com"
-          git add -A
-          git commit -m "Hourly update" || echo "No changes"
-          git push
-
-
-          python weather_app1.py
+          # Only add the specific files you expect to change
+          git add weather_latest.png 
+          # Commit only if the file actually changed to avoid empty "ghost" commits
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Weather Update: $(date)" && git push)
