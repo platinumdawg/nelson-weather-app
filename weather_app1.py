@@ -35,18 +35,14 @@ def get_weather_data():
             # Extracting the timeseries data
             timeseries = data['properties']['timeseries']
             
-        rows = []
-        for entry in timeseries[:240]:
-            # Everything inside the loop must be indented 4 spaces
-            row = {
-                'time': entry['time'],
-                'wind': entry['data']['instant']['details']['wind_speed'] * 3.6, # m/s to km/h
-                'rain': (
-                    entry['data'].get('next_1_hours', {}).get('details', {}).get('precipitation_amount') or 
-                    entry['data'].get('next_6_hours', {}).get('details', {}).get('precipitation_amount') or 0
-                )
-            }
-            rows.append(row)
+            rows = []
+            for entry in timeseries[:48]:  
+                row = {
+                    'time': entry['time'],
+                    'wind': entry['data']['instant']['details']['wind_speed'] * 3.6, # Convert m/s to km/h
+                    'rain': entry['data'].get('next_1_hours', {}).get('details', {}).get('precipitation_amount', 0)
+                }
+                rows.append(row)
             
             return pd.DataFrame(rows)
         else:
@@ -70,7 +66,7 @@ def generate_plot(df):
     ax2 = ax1.twinx()
 
 
-    ax1.xaxis.set_major_locator(mdates.HourLocator(interval=8))
+    ax1.xaxis.set_major_locator(mdates.HourLocator(interval=3))
     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%a %d\n%I %p'))
     ax1.plot(df['time'], df['rain'], color='#44aaff', alpha=0.6, label='Rain (mm/h)')
     ax1.set_ylabel('Rain (mm)', color='#44aaff', fontsize=12)
