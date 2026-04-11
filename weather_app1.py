@@ -10,7 +10,7 @@ LAT, LON = -41.3384, 173.1843
 RAIN_MAX, WIND_MAX, TEMP_MAX, TEMP_MIN = 10.0, 20.0, 20.0, 0.0
 
 def get_weather_data():
-    # Ensure this is exactly: https://open-meteo.com
+    # Correct API endpoint
     url = "https://open-meteo.com"
     
     params = {
@@ -22,18 +22,23 @@ def get_weather_data():
         "forecast_days": 5
     }
     
+    # Essential for GitHub Actions to identify the request source
+    headers = {
+        'User-Agent': 'RichmondWeatherApp/1.0 (://github.com)'
+    }
+    
     try:
-        # We removed 'headers=headers' here
-        response = requests.get(url, params=params, timeout=20)
+        response = requests.get(url, params=params, headers=headers, timeout=20)
         
+        # Check if the server actually sent a successful response
         if response.status_code == 200:
             return pd.DataFrame(response.json()['hourly'])
         else:
-            # This will help you see if it's a 403 Forbidden or 400 Bad Request
-            print(f"Server returned {response.status_code}. Content: {response.text[:100]}")
+            print(f"Server error {response.status_code}: {response.text[:100]}")
     except Exception as e:
         print(f"Connection failed: {e}")
     return None
+
 
 
 
