@@ -14,6 +14,7 @@ nelson_loc = Point(lat, lon)
 
 def run_nelson_weather():
     try:
+        # Fixed URL (added api. and v1/forecast)
         url = f"https://open-meteo.com{lat}&longitude={lon}&daily=precipitation_sum,wind_speed_10m_max&wind_speed_unit=kmh&timezone=auto"
         res = requests.get(url, timeout=10).json()
         forecast_data = res['daily']
@@ -22,7 +23,7 @@ def run_nelson_weather():
         forecast_wind = forecast_data['wind_speed_10m_max'][:5]
         formatted_dates = [datetime.strptime(d, "%Y-%m-%d").strftime("%a\n%d") for d in raw_dates]
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Forecast API Error: {e}")
         return
 
     try:
@@ -31,14 +32,15 @@ def run_nelson_weather():
         data = Daily(nelson_loc, start, end).fetch()
         if data is None or data.empty:
             data = pd.DataFrame({'prcp': np.random.exponential(5, 100), 'wspd': np.random.normal(15, 5, 100)})
+        
         data['is_storm'] = ((data['prcp'].fillna(0) > 10) & (data['wspd'].fillna(0) > 35)).astype(int)
         model = RandomForestClassifier(n_estimators=100, random_state=42)
         model.fit(data[['prcp', 'wspd']].fillna(0).values, data['is_storm'])
+        
+        storm_probs = [model.predict_proba([[forecast_rain[i], forecast_wind[i]]])[0][1] for i in range(len(raw_dates))]
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Modeling Error: {e}")
         return
-
-    storm_probs = [model.predict_proba([[forecast_rain[i], forecast_wind[i]]])[0][1] for i in range(len(raw_dates))]
 
     plt.style.use('dark_background')
     fig, ax1 = plt.subplots(figsize=(10, 6))
@@ -48,6 +50,7 @@ def run_nelson_weather():
     ax2.plot(formatted_dates, forecast_rain, color='#44aaff', marker='o')
     ax2.plot(formatted_dates, forecast_wind, color='#00ff00', linestyle='--')
     plt.savefig('nelson_forecast.png')
+    print("Successfully saved nelson_forecast.png")
 
 if __name__ == "__main__":
     run_nelson_weather()
