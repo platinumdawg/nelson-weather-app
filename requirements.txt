@@ -1,11 +1,7 @@
 requests
 pandas
-numpy
-matplotlib
-meteostat
-scikit-learn
-requests
-pandas
 matplotlib
 openmeteo-sdk
+openmeteo-requests
 retry-requests
+requests-cache
