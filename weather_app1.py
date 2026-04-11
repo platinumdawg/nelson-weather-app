@@ -16,13 +16,20 @@ nelson_loc = Point(lat, lon)
 def run_nelson_weather():
     print("Connecting to Open-Meteo API...")
     try:
-        # Correctly formatted URL with all required parameters
-        url = f"https://open-meteo.com{lat}&longitude={lon}&daily=precipitation_sum,wind_speed_10m_max&wind_speed_unit=kmh&timezone=auto"
-        response = requests.get(url, timeout=15)
+        # THE FIX: Using a params dictionary ensures the URL is built correctly by the requests library
+        url = "https://api.open-meteo.com/v1/forecast"
+        params = {
+            "latitude": lat,
+            "longitude": lon,
+            "daily": "precipitation_sum,wind_speed_10m_max",
+            "wind_speed_unit": "kmh",
+            "timezone": "auto"
+        }
         
-        # Check if the request was successful (200 OK)
+        response = requests.get(url, params=params, timeout=15)
+        
         if response.status_code != 200:
-            raise Exception(f"API returned status code {response.status_code}")
+            raise Exception(f"API returned status code {response.status_code}: {response.text}")
             
         res = response.json()
         forecast_data = res['daily']
@@ -32,7 +39,7 @@ def run_nelson_weather():
         formatted_dates = [datetime.strptime(d, "%Y-%m-%d").strftime("%a\n%d") for d in raw_dates]
     except Exception as e:
         print(f"API Error: {e}")
-        # Create a placeholder image so the GitHub Action doesn't fail
+        # Create a placeholder so the GitHub Action doesn't fail
         plt.figure(figsize=(10, 6), facecolor='black')
         plt.text(0.5, 0.5, f"API Connection Error:\n{e}", color='white', ha='center', fontsize=12)
         plt.savefig('nelson_forecast.png')
@@ -44,22 +51,16 @@ def run_nelson_weather():
         start = end - timedelta(days=730)
         data = Daily(nelson_loc, start, end).fetch()
         
-        # Fallback if Meteostat returns no data
         if data is None or data.empty:
-            print("No historical data found. using synthetic data for model.")
             data = pd.DataFrame({
                 'prcp': np.random.exponential(5, 100), 
                 'wspd': np.random.normal(15, 5, 100)
             })
         
-        # Prepare target variable: 1 if rain > 10mm and wind > 35km/h
         data['is_storm'] = ((data['prcp'].fillna(0) > 10) & (data['wspd'].fillna(0) > 35)).astype(int)
-        
         model = RandomForestClassifier(n_estimators=100, random_state=42)
-        X_train = data[['prcp', 'wspd']].fillna(0).values
-        model.fit(X_train, data['is_storm'])
+        model.fit(data[['prcp', 'wspd']].fillna(0).values, data['is_storm'])
         
-        # Predict probability for the 5-day forecast
         X_forecast = np.array(list(zip(forecast_rain, forecast_wind)))
         storm_probs = model.predict_proba(X_forecast)[:, 1]
     except Exception as e:
@@ -70,21 +71,18 @@ def run_nelson_weather():
     plt.style.use('dark_background')
     fig, ax1 = plt.subplots(figsize=(10, 7))
     
-    # 1. Plot Storm Probability
+    # Plotting
     ax1.bar(formatted_dates, storm_probs, color='#ff4444', alpha=0.3, label='Storm Probability')
     ax1.set_ylim(0, 1.1)
     ax1.set_ylabel('Storm Probability', color='#ff4444')
 
-    # 2. Plot Rain and Wind
     ax2 = ax1.twinx()
     ax2.plot(formatted_dates, forecast_rain, color='#44aaff', marker='o', linewidth=2, label='Rain (mm)')
     ax2.plot(formatted_dates, forecast_wind, color='#00ff00', linestyle='--', linewidth=2, label='Wind (km/h)')
     ax2.set_ylabel('Rain (mm) / Wind (km/h)', color='#44aaff')
 
-    # 3. Add Summary and Legend
-    max_rain = max(forecast_rain)
-    max_wind = max(forecast_wind)
-    summary = f"5-DAY SUMMARY: Max Rain: {max_rain}mm | Max Wind: {max_wind}km/h"
+    # Summary Text
+    summary = f"5-DAY SUMMARY: Max Rain: {max(forecast_rain)}mm | Max Wind: {max(forecast_wind)}km/h"
     plt.figtext(0.5, 0.02, summary, ha="center", fontsize=10, bbox={"facecolor":"orange", "alpha":0.2, "pad":5})
     
     plt.title(f"Nelson, NZ Weather Forecast - Updated {datetime.now().strftime('%d %b %H:%M')}")
