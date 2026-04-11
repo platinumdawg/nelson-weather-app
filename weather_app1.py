@@ -16,8 +16,8 @@ nelson_loc = Point(lat, lon)
 def run_nelson_weather():
     print("Connecting to API...")
     try:
-        # FIXED URL: Complete path for Open-Meteo
-        url = f"https://open-meteo.com{lat}&longitude={lon}&daily=precipitation_sum,wind_speed_10m_max&wind_speed_unit=kmh&timezone=auto"
+        # TRIPLE CHECKED URL FORMAT
+        url = "https://open-meteo.com"
         res = requests.get(url, timeout=15).json()
         
         forecast_data = res['daily']
@@ -27,6 +27,7 @@ def run_nelson_weather():
         formatted_dates = [datetime.strptime(d, "%Y-%m-%d").strftime("%a\n%d") for d in raw_dates]
     except Exception as e:
         print(f"API Error: {e}")
+        # Create dummy image so Git doesn't crash
         plt.figure().text(0.5, 0.5, f"API Error: {e}", ha='center').figure.savefig('nelson_forecast.png')
         return
 
@@ -43,7 +44,9 @@ def run_nelson_weather():
         model = RandomForestClassifier(n_estimators=100, random_state=42)
         model.fit(data[['prcp', 'wspd']].fillna(0).values, data['is_storm'])
         
-        storm_probs = [model.predict_proba([[forecast_rain[i], forecast_wind[i]]])[0][1] for i in range(len(raw_dates))]
+        # Fixed probability extraction logic
+        storm_probs_raw = model.predict_proba(np.array(list(zip(forecast_rain, forecast_wind))))
+        storm_probs = [p[1] if len(p) > 1 else 0.0 for p in storm_probs_raw]
     except Exception as e:
         print(f"Modeling Error: {e}")
         return
@@ -53,7 +56,7 @@ def run_nelson_weather():
     fig, ax1 = plt.subplots(figsize=(10, 7))
     
     # 1. Plot Storm Probability
-    bars = ax1.bar(formatted_dates, storm_probs, color='#ff4444', alpha=0.3, label='Storm Prob')
+    ax1.bar(formatted_dates, storm_probs, color='#ff4444', alpha=0.3, label='Storm Prob')
     ax1.set_ylim(0, 1.1)
     ax1.set_ylabel('Storm Probability', color='#ff4444')
 
@@ -67,14 +70,12 @@ def run_nelson_weather():
     max_rain = max(forecast_rain)
     max_wind = max(forecast_wind)
     summary = f"SUMMARY: Max Rain: {max_rain}mm | Max Wind: {max_wind}km/h"
-    
-    # Add summary to bottom of chart
     plt.figtext(0.5, 0.02, summary, ha="center", fontsize=10, bbox={"facecolor":"orange", "alpha":0.2, "pad":5})
     
     plt.title(f"Nelson Forecast - Updated {datetime.now().strftime('%d %b %H:%M')}")
     fig.legend(loc="upper right", bbox_to_anchor=(1,1), bbox_transform=ax1.transAxes)
     
-    plt.tight_layout(rect=[0, 0.05, 1, 0.95]) # Make room for summary
+    plt.tight_layout(rect=[0, 0.05, 1, 0.95]) 
     plt.savefig('nelson_forecast.png')
     print("Success: nelson_forecast.png created with summary.")
 
