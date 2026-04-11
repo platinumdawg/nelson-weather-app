@@ -9,45 +9,37 @@ import glob
 LAT, LON = -41.3384, 173.1843
 RAIN_MAX, WIND_MAX, TEMP_MAX, TEMP_MIN = 10.0, 20.0, 20.0, 0.0
 
-def cleanup_old_files(days_to_keep=5):
-    cutoff = datetime.now() - timedelta(days=days_to_keep)
-    for f in glob.glob("weather_*.png"):
-        if "latest" in f: continue
-        try:
-            if datetime.fromtimestamp(os.path.getmtime(f)) < cutoff:
-                os.remove(f)
-        except: pass
-
 def get_weather_data():
     url = "https://open-meteo.com"
     params = {
-        "latitude": LAT,
-        "longitude": LON,
+        "latitude": LAT, "longitude": LON,
         "hourly": "precipitation,wind_speed_10m,temperature_2m",
-        "wind_speed_unit": "kmh",
-        "timezone": "Pacific/Auckland",
-        "forecast_days": 5
+        "wind_speed_unit": "kmh", "timezone": "Pacific/Auckland", "forecast_days": 5
     }
+    # This header makes the request look like a real browser
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    }
+    
     try:
-        # Standard JSON request avoids the 'unpack' buffer error
-        res = requests.get(url, params=params, timeout=20)
-        if res.status_code == 200:
-            data = res.json()
-            df = pd.DataFrame(data['hourly'])
-            df['time'] = pd.to_datetime(df['time'])
-            return df
+        response = requests.get(url, params=params, headers=headers, timeout=20)
+        
+        if response.status_code == 200:
+            return pd.DataFrame(response.json()['hourly'])
         else:
-            print(f"API Error: {res.status_code}")
+            print(f"Server error {response.status_code}: {response.text}")
     except Exception as e:
         print(f"Connection failed: {e}")
     return None
 
 def generate_plot(df):
     if df is None: return
+    df['time'] = pd.to_datetime(df['time'])
     plt.style.use('dark_background')
     fig, ax1 = plt.subplots(figsize=(15, 8))
     ax2 = ax1.twinx()
 
+    # Create Day/Night Labels
     def format_time(t):
         if t.hour == 12: return f"{t.strftime('%a')}\nDay"
         if t.hour == 0: return f"{t.strftime('%a')}\nNight"
@@ -56,38 +48,30 @@ def generate_plot(df):
     time_labels = [format_time(t) for t in df['time']]
     tick_indices = [i for i, label in enumerate(time_labels) if label != ""]
 
-    # Main Lines
+    # Plot Lines
     ax1.plot(df['time'], df['precipitation'], color='#44aaff', linewidth=2, label='Rain (mm/h)')
     ax2.plot(df['time'], df['wind_speed_10m'], color='#00ff00', linewidth=2, label='Wind (km/h)')
     ax2.plot(df['time'], df['temperature_2m'], color='#ff9900', linewidth=2.5, label='Temp (°C)')
 
-    # Smart Alerts
-    if df['precipitation'].max() >= RAIN_MAX:
-        ax1.axhline(y=RAIN_MAX, color='cyan', linestyle='--', alpha=0.5, label='RAIN ALERT')
-    if df['wind_speed_10m'].max() >= WIND_MAX:
-        ax2.axhline(y=WIND_MAX, color='lime', linestyle='--', alpha=0.5, label='WIND ALERT')
-    if df['temperature_2m'].max() >= TEMP_MAX:
-        ax2.axhline(y=TEMP_MAX, color='red', linestyle=':', alpha=0.7, label='HEAT ALERT')
-    if df['temperature_2m'].min() <= TEMP_MIN:
-        ax2.axhline(y=TEMP_MIN, color='white', linestyle=':', alpha=0.7, label='FROST ALERT')
+    # Alerts (Only if triggered)
+    if df['precipitation'].max() >= RAIN_MAX: ax1.axhline(y=RAIN_MAX, color='cyan', linestyle='--')
+    if df['wind_speed_10m'].max() >= WIND_MAX: ax2.axhline(y=WIND_MAX, color='lime', linestyle='--')
 
-    plt.title(f"Richmond 5-Day Smart Forecast\nUpdated: {datetime.now().strftime('%d %b %H:%M')}")
-    ax1.set_xticks(df['time'][tick_indices])
-    ax1.set_xticklabels([time_labels[i] for i in tick_indices])
-    ax1.set_ylabel('Rain (mm)', color='#44aaff')
-    ax2.set_ylabel('Wind / Temp', color='#ff9900')
-
+    plt.title(f"Richmond 5-Day Forecast\nUpdated: {datetime.now().strftime('%d %b %H:%M')}")
+    ax1.set_xticks(df['time'][tick_indices]); ax1.set_xticklabels([time_labels[i] for i in tick_indices])
+    
     h1, l1 = ax1.get_legend_handles_labels()
     h2, l2 = ax2.get_legend_handles_labels()
-    ax1.legend(h1 + h2, l1 + l2, loc='upper left', frameon=True, facecolor='black')
+    ax1.legend(h1 + h2, l1 + l2, loc='upper left')
 
-    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M')
     plt.tight_layout()
-    plt.savefig(f"weather_{timestamp}.png")
     plt.savefig("weather_latest.png")
-    print(f"Success: Saved weather_{timestamp}.png")
+    print("Success: weather_latest.png updated.")
 
 if __name__ == "__main__":
-    cleanup_old_files()
+    # Clean up old files if they exist
+    for f in glob.glob("weather_*.png"):
+        if "latest" not in f: os.remove(f)
+    
     data = get_weather_data()
     generate_plot(data)
