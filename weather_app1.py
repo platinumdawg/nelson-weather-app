@@ -1,44 +1,36 @@
 import requests
-import pandas as pd
-import matplotlib.pyplot as plt
-from datetime import datetime, timedelta
-import os
-import glob
-
-# 1. Configuration - Richmond Only
-LAT, LON = -41.3384, 173.1843
-RAIN_MAX, WIND_MAX, TEMP_MAX, TEMP_MIN = 10.0, 20.0, 20.0, 0.0
+from urllib3.util import Retry
+from requests.adapters import HTTPAdapter
 
 def get_weather_data():
-    # Correct API endpoint
     url = "https://open-meteo.com"
-    
     params = {
-        "latitude": LAT, 
-        "longitude": LON,
+        "latitude": LAT, "longitude": LON,
         "hourly": "precipitation,wind_speed_10m,temperature_2m",
-        "wind_speed_unit": "kmh", 
-        "timezone": "Pacific/Auckland", 
-        "forecast_days": 5
+        "wind_speed_unit": "kmh", "timezone": "Pacific/Auckland", "forecast_days": 5
     }
     
-    # Essential for GitHub Actions to identify the request source
-    headers = {
-        'User-Agent': 'RichmondWeatherApp/1.0 (://github.com)'
-    }
-    
+    # 1. Setup retries to handle unstable GitHub runner connections
+    session = requests.Session()
+    retries = Retry(total=3, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
+    session.mount('https://', HTTPAdapter(max_retries=retries))
+
     try:
-        response = requests.get(url, params=params, headers=headers, timeout=20)
+        # Use a unique User-Agent to avoid generic bot blocks
+        headers = {'User-Agent': 'RichmondWeatherBot/1.0 (Contact: your-email@example.com)'}
+        response = session.get(url, params=params, headers=headers, timeout=15)
         
-        # Check if the server actually sent a successful response
+        # 2. Check if we actually got a successful response
         if response.status_code == 200:
             return pd.DataFrame(response.json()['hourly'])
-        else:
-            print(f"Server error {response.status_code}: {response.text[:100]}")
+        
+        # 3. DEBUG: If it fails, print the status and the first 200 chars of the error
+        # This will tell you if you are BLOCKED (403) or RATE LIMITED (429)
+        print(f"API Error {response.status_code}: {response.text[:200]}")
+        
     except Exception as e:
-        print(f"Connection failed: {e}")
+        print(f"Request failed: {e}")
     return None
-
 
 
 
