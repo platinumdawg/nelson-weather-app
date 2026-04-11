@@ -1,62 +1,71 @@
-import requests
+import openmeteo_requests
+import requests_cache
 import pandas as pd
+from retry_requests import retry
 import matplotlib.pyplot as plt
 from datetime import datetime
 import os
 import glob
-import time
-import random
 
-# 1. Configuration - Richmond
+# 1. Setup the Open-Meteo API client with cache and retry on error
+cache_session = requests_cache.CachedSession('.cache', expire_after=3600)
+retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
+openmeteo = openmeteo_requests.Client(session=retry_session)
+
+# Richmond Coordinates
 LAT, LON = -41.3384, 173.1843
 
 def get_weather_data():
     url = "https://open-meteo.com"
     params = {
-        "latitude": LAT, "longitude": LON,
-        "hourly": "precipitation,wind_speed_10m,temperature_2m",
-        "wind_speed_unit": "kmh", "timezone": "Pacific/Auckland", "forecast_days": 5
+        "latitude": LAT,
+        "longitude": LON,
+        "hourly": ["precipitation", "wind_speed_10m", "temperature_2m"],
+        "wind_speed_unit": "kmh",
+        "timezone": "Pacific/Auckland",
+        "forecast_days": 5
     }
     
-    # Randomize User-Agent slightly to avoid fingerprinting
-    headers = {'User-Agent': f'RichmondBot_{random.randint(1, 1000)}'}
-    
-    # Try 3 times with a delay between attempts
-    for attempt in range(3):
-        try:
-            response = requests.get(url, params=params, headers=headers, timeout=30)
-            
-            if response.status_code == 200:
-                # This check prevents the "line 1 column 1" crash
-                if not response.text.strip():
-                    print(f"Attempt {attempt+1}: Received empty response. Retrying...")
-                    time.sleep(10)
-                    continue
-                return pd.DataFrame(response.json()['hourly'])
-            else:
-                print(f"Attempt {attempt+1}: Server error {response.status_code}")
-                time.sleep(10)
-                
-        except Exception as e:
-            print(f"Attempt {attempt+1} failed: {e}")
-            time.sleep(10)
-            
-    return None
+    try:
+        # The library handles the connection and parsing
+        responses = openmeteo.weather_api(url, params=params)
+        response = responses[0]
+
+        # Process hourly data
+        hourly = response.Hourly()
+        hourly_precipitation = hourly.Variables(0).ValuesAsNumpy()
+        hourly_wind_speed_10m = hourly.Variables(1).ValuesAsNumpy()
+        hourly_temperature_2m = hourly.Variables(2).ValuesAsNumpy()
+
+        hourly_data = {
+            "date": pd.date_range(
+                start=pd.to_datetime(hourly.Time(), unit="s", utc=True),
+                end=pd.to_datetime(hourly.TimeEnd(), unit="s", utc=True),
+                freq=pd.Timedelta(seconds=hourly.Interval()),
+                inclusive="left"
+            ),
+            "precipitation": hourly_precipitation,
+            "wind_speed_10m": hourly_wind_speed_10m,
+            "temperature_2m": hourly_temperature_2m
+        }
+
+        return pd.DataFrame(data=hourly_data)
+    except Exception as e:
+        print(f"API Client Error: {e}")
+        return None
 
 def generate_plot(df):
     if df is None or df.empty:
-        print("Skipping plot: No data received from API after retries.")
+        print("No data received. GitHub IP likely blocked.")
         return
         
-    df['time'] = pd.to_datetime(df['time'])
     plt.style.use('dark_background')
     fig, ax1 = plt.subplots(figsize=(15, 8))
     ax2 = ax1.twinx()
 
-    # Plot Lines
-    ax1.plot(df['time'], df['precipitation'], color='#44aaff', linewidth=2, label='Rain (mm/h)')
-    ax2.plot(df['time'], df['wind_speed_10m'], color='#00ff00', linewidth=2, label='Wind (km/h)')
-    ax2.plot(df['time'], df['temperature_2m'], color='#ff9900', linewidth=2.5, label='Temp (°C)')
+    ax1.plot(df['date'], df['precipitation'], color='#44aaff', linewidth=2, label='Rain (mm/h)')
+    ax2.plot(df['date'], df['wind_speed_10m'], color='#00ff00', linewidth=2, label='Wind (km/h)')
+    ax2.plot(df['date'], df['temperature_2m'], color='#ff9900', linewidth=2.5, label='Temp (°C)')
 
     plt.title(f"Richmond 5-Day Forecast\nUpdated: {datetime.now().strftime('%d %b %H:%M')}")
     
@@ -69,12 +78,10 @@ def generate_plot(df):
     print("Success: weather_latest.png updated.")
 
 if __name__ == "__main__":
-    # Clean up old files
     for f in glob.glob("weather_*.png"):
         if "latest" not in f:
             try: os.remove(f)
             except: pass
-    
-    # Execute
-    weather_data = get_weather_data()
-    generate_plot(weather_data)
+            
+    data = get_weather_data()
+    generate_plot(data)
