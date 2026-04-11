@@ -36,7 +36,6 @@ def get_weather_data():
             for entry in timeseries[:72]:  # Get next 5 days (approx 120 hours)
                 row = {
                     'time': entry['time'],
-                    'temp': entry['data']['instant']['details']['air_temperature'],
                     'wind': entry['data']['instant']['details']['wind_speed'] * 3.6, # Convert m/s to km/h
                     'rain': entry['data'].get('next_1_hours', {}).get('details', {}).get('precipitation_amount', 0)
                 }
@@ -71,18 +70,14 @@ def generate_plot(df):
     ax2.plot(df['time'], df['wind'], color='#00ff00', linewidth=1.5, linestyle='--', label='Wind (km/h)')
     ax2.set_ylabel('Wind (km/h)', color='#ff9900', fontsize=12)
 
-    ax3 = ax1.twinx()
-    ax3.spines['right'].set_position(('outward', 60))
-    ax3.plot(df['time'], df['temp'], color='#ffcc66', linewidth=2.0, label='Temp (°C)')
-    ax3.set_ylabel('Temp (°C)', color='#ffcc66', fontsize=12)
 
     plt.title(f"Nelson/Richmond Forecast (Met.no Data)\nUpdated: {datetime.now().strftime('%d %b %H:%M')}", fontsize=16)
     
     # Legend
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
-    lines3, labels3 = ax3.get_legend_handles_labels()
-    ax1.legend(lines1 + lines2 + lines3, labels1 + labels2 + labels3, loc='upper left')
+   
+    ax1.legend(lines1 + lines2 + lines3, labels1 + labels2 , loc='upper left')
 
     plt.tight_layout()
     plt.savefig("weather_latest.png")
