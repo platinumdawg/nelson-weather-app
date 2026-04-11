@@ -14,6 +14,9 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Debug - List Files
+        run: ls -R  # This will show us exactly what the file is named in the logs
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
@@ -24,7 +27,8 @@ jobs:
           pip install requests pandas numpy matplotlib meteostat scikit-learn
 
       - name: Run script
-        run: python weather_app.py
+        # We use ./ to tell it to look in the current folder
+        run: python ./weather_app.py 
 
       - name: Commit and push chart
         run: |
