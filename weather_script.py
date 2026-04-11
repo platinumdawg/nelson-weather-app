@@ -3,14 +3,13 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
-# FIXED: Added 'Daily' to the import list below
-from meteostat import Point, daily, Daily 
+# FIXED: Removed the lowercase 'daily' which was causing the crash
+from meteostat import Point, Daily 
 from sklearn.ensemble import RandomForestClassifier
 import warnings
 
 # --- GITHUB ACTIONS CACHE FIX ---
 Daily.max_age = 0 
-# -------------------------------
 
 # 1. SETUP
 warnings.filterwarnings("ignore")
@@ -41,7 +40,8 @@ def run_nelson_weather():
     try:
         end = datetime.now()
         start = end - timedelta(days=730)
-        data = daily(nelson_loc, start, end).fetch()
+        # FIXED: Changed 'daily' to 'Daily' here to match the import
+        data = Daily(nelson_loc, start, end).fetch()
 
         if data is None or data.empty:
             data = pd.DataFrame({
@@ -89,7 +89,6 @@ def run_nelson_weather():
     labels = [l.get_label() for l in lines]
     ax1.legend(lines, labels, loc='upper left', facecolor='#333', edgecolor='white')
 
-    # FIXED: Changed ply to plt
     plt.tight_layout()
     plt.savefig('nelson_forecast.png')
     print("Success: Image saved!")
