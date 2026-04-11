@@ -10,16 +10,6 @@ import tkinter as tk
 # Richmond/Nelson, NZ Coordinates
 LAT, LON = -41.3384, 173.1843
 
-def refresh():
-    # 1. Logic to fetch weather and update labels
-    print("Updating UI...")
-    
-    # 2. Schedule this function to run again in 1 hour
-    root.after(3600000, refresh)
-
-root = tk.Tk()
-refresh() # Initial call to start the loop
-root.mainloop()
 
 def get_weather_data():
     # Met.no API (Yr.no) is very stable for GitHub runners
