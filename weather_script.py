@@ -3,9 +3,14 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
-from meteostat import Point, daily
+# FIXED: Added 'Daily' to the import list below
+from meteostat import Point, daily, Daily 
 from sklearn.ensemble import RandomForestClassifier
 import warnings
+
+# --- GITHUB ACTIONS CACHE FIX ---
+Daily.max_age = 0 
+# -------------------------------
 
 # 1. SETUP
 warnings.filterwarnings("ignore")
@@ -26,7 +31,6 @@ def run_nelson_weather():
         forecast_rain = daily_data['precipitation_sum'][:5]
         forecast_wind = daily_data['wind_speed_10m_max'][:5]
         
-        # Convert YYYY-MM-DD to "Mon 12" format
         formatted_dates = [datetime.strptime(d, "%Y-%m-%d").strftime("%a\n%d") for d in raw_dates]
         
     except Exception as e:
@@ -59,21 +63,16 @@ def run_nelson_weather():
         prob = model.predict_proba([[forecast_rain[i], forecast_wind[i]]])
         storm_probs.append(prob[0][1] if prob.shape[1] > 1 else 0.0)
 
-    # --- DARK THEME PLOTTING ---
-    plt.style.use('dark_background') # Instant Dark Mode
+    plt.style.use('dark_background')
     fig, ax1 = plt.subplots(figsize=(12, 7))
-    
-    # Background color tweaking (optional, for 'blacker' black)
     fig.patch.set_facecolor('black')
     ax1.set_facecolor('black')
 
-    # Left Axis: Risk Bars
     bars = ax1.bar(formatted_dates, storm_probs, color='#ff4444', alpha=0.3, label='Storm Risk')
     ax1.set_ylabel('Storm Probability', color='#ff4444', fontweight='bold')
     ax1.set_ylim(0, 1.1)
     ax1.tick_params(axis='y', colors='#ff4444')
 
-    # Right Axis: Weather Lines
     ax2 = ax1.twinx()
     line1, = ax2.plot(formatted_dates, forecast_rain, color='#44aaff', marker='o', linewidth=2, label='Rain (mm)')
     line2, = ax2.plot(formatted_dates, forecast_wind, color='#00ff00', linestyle='--', marker='x', linewidth=2, label='Wind (km/h)')
@@ -81,26 +80,19 @@ def run_nelson_weather():
     ax2.set_ylabel('Intensity', color='white', fontweight='bold')
     ax2.tick_params(axis='y', colors='white')
 
-    # --- DATA LABELS (The requested addition) ---
     for i, txt in enumerate(formatted_dates):
-        # Rain Label (Blue) - Slight offset above point
-        ax2.text(i, forecast_rain[i] + 1, f"{forecast_rain[i]}mm", 
-                 color='#44aaff', ha='center', fontsize=9, fontweight='bold')
-        
-        # Wind Label (Green) - Slight offset below point
-        ax2.text(i, forecast_wind[i] - 2, f"{forecast_wind[i]}k", 
-                 color='#00ff00', ha='center', fontsize=9, fontweight='bold')
+        ax2.text(i, forecast_rain[i] + 1, f"{forecast_rain[i]}mm", color='#44aaff', ha='center', fontsize=9, fontweight='bold')
+        ax2.text(i, forecast_wind[i] - 2, f"{forecast_wind[i]}k", color='#00ff00', ha='center', fontsize=9, fontweight='bold')
 
-    # Title & Layout
     plt.title('Nelson Forecast: Risk vs Intensity', color='white', fontsize=14, pad=20)
-    
-    # Legend
     lines = [bars, line1, line2]
     labels = [l.get_label() for l in lines]
     ax1.legend(lines, labels, loc='upper left', facecolor='#333', edgecolor='white')
 
-    ply.tight_layout()
+    # FIXED: Changed ply to plt
+    plt.tight_layout()
     plt.savefig('nelson_forecast.png')
+    print("Success: Image saved!")
 
 if __name__ == "__main__":
     run_nelson_weather()
