@@ -37,3 +37,8 @@ jobs:
           git add -A
           git commit -m "Hourly update" || echo "No changes"
           git push
+
+          - name: Run Weather App
+  run: |
+    sudo apt-get install -y xvfb
+    xvfb-run python weather_app1.py
