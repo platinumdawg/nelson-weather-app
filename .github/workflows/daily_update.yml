@@ -38,12 +38,5 @@ jobs:
           git commit -m "Hourly update" || echo "No changes"
           git push
 
-      - name: Run Weather App with Virtual Display
-        env:
-          DISPLAY: :99
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y xvfb python3-tk
-          Xvfb :99 -screen 0 1024x768x24 &
-          sleep 3
+
           python weather_app1.py
