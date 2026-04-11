@@ -1,96 +1,76 @@
 import requests
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-from datetime import datetime, timedelta
-from meteostat import Point, Daily 
-from sklearn.ensemble import RandomForestClassifier
-import warnings
+from datetime import datetime
 
-# Configuration
-Daily.max_age = 0 
-warnings.filterwarnings("ignore")
-lat, lon = -41.298, 173.226 
-nelson_loc = Point(lat, lon)
+# Configuration: Add as many Nelson-area coordinates as you like
+LOCATIONS = [
+    {"name": "Nelson Central", "lat": -41.2706, "lon": 173.2840},
+    {"name": "Richmond", "lat": -41.3384, "lon": 173.1843},
+    {"name": "Nelson Airport", "lat": -41.298, "lon": 173.226}
+]
 
-def run_nelson_weather():
-    print("Connecting to Open-Meteo API...")
-    try:
-        # THE FIX: Using a params dictionary ensures the URL is built correctly by the requests library
-        url = "https://api.open-meteo.com/v1/forecast"
-        params = {
-            "latitude": lat,
-            "longitude": lon,
-            "daily": "precipitation_sum,wind_speed_10m_max",
-            "wind_speed_unit": "kmh",
-            "timezone": "auto"
-        }
-        
-        response = requests.get(url, params=params, timeout=15)
-        
-        if response.status_code != 200:
-            raise Exception(f"API returned status code {response.status_code}: {response.text}")
-            
-        res = response.json()
-        forecast_data = res['daily']
-        raw_dates = forecast_data['time'][:5]
-        forecast_rain = forecast_data['precipitation_sum'][:5]
-        forecast_wind = forecast_data['wind_speed_10m_max'][:5]
-        formatted_dates = [datetime.strptime(d, "%Y-%m-%d").strftime("%a\n%d") for d in raw_dates]
-    except Exception as e:
-        print(f"API Error: {e}")
-        # Create a placeholder so the GitHub Action doesn't fail
-        plt.figure(figsize=(10, 6), facecolor='black')
-        plt.text(0.5, 0.5, f"API Connection Error:\n{e}", color='white', ha='center', fontsize=12)
-        plt.savefig('nelson_forecast.png')
-        return
+def get_weather_data():
+    all_lats = ",".join([str(l["lat"]) for l in LOCATIONS])
+    all_lons = ",".join([str(l["lon"]) for l in LOCATIONS])
+    
+    url = "https://api.open-meteo.com/v1/forecast"
+    params = {
+        "latitude": all_lats,
+        "longitude": all_lons,
+        "hourly": "precipitation,wind_speed_10m,is_day",
+        "wind_speed_unit": "kmh",
+        "timezone": "Pacific/Auckland",
+        "forecast_days": 2
+    }
+    
+    response = requests.get(url, params=params)
+    data = response.json()
+    
+    # If multiple locations, Open-Meteo returns a list. We'll average them for the "Storm Tracker".
+    if isinstance(data, list):
+        df_list = [pd.DataFrame(loc['hourly']) for loc in data]
+        df = pd.concat(df_list).groupby('time').mean().reset_index()
+    else:
+        df = pd.DataFrame(data['hourly'])
+    
+    df['time'] = pd.to_datetime(df['time'])
+    return df
 
-    print("Fetching Historical Data and Modeling...")
-    try:
-        end = datetime.now()
-        start = end - timedelta(days=730)
-        data = Daily(nelson_loc, start, end).fetch()
-        
-        if data is None or data.empty:
-            data = pd.DataFrame({
-                'prcp': np.random.exponential(5, 100), 
-                'wspd': np.random.normal(15, 5, 100)
-            })
-        
-        data['is_storm'] = ((data['prcp'].fillna(0) > 10) & (data['wspd'].fillna(0) > 35)).astype(int)
-        model = RandomForestClassifier(n_estimators=100, random_state=42)
-        model.fit(data[['prcp', 'wspd']].fillna(0).values, data['is_storm'])
-        
-        X_forecast = np.array(list(zip(forecast_rain, forecast_wind)))
-        storm_probs = model.predict_proba(X_forecast)[:, 1]
-    except Exception as e:
-        print(f"Modeling Error: {e}")
-        return
-
-    print("Generating Forecast Chart...")
+def generate_plot(df):
     plt.style.use('dark_background')
-    fig, ax1 = plt.subplots(figsize=(10, 7))
-    
-    # Plotting
-    ax1.bar(formatted_dates, storm_probs, color='#ff4444', alpha=0.3, label='Storm Probability')
-    ax1.set_ylim(0, 1.1)
-    ax1.set_ylabel('Storm Probability', color='#ff4444')
+    fig, ax1 = plt.subplots(figsize=(12, 7))
 
+    # X-Axis: Hourly 
+    times = df['time'].dt.strftime('%H:00')
+    
+    # Hourly Rain (Bars)
+    ax1.bar(times, df['precipitation'], color='#44aaff', alpha=0.6, label='Hourly Rain (mm)')
+    ax1.set_ylabel('Rain (mm)', color='#44aaff')
+    
+    # Wind Speed (Line)
     ax2 = ax1.twinx()
-    ax2.plot(formatted_dates, forecast_rain, color='#44aaff', marker='o', linewidth=2, label='Rain (mm)')
-    ax2.plot(formatted_dates, forecast_wind, color='#00ff00', linestyle='--', linewidth=2, label='Wind (km/h)')
-    ax2.set_ylabel('Rain (mm) / Wind (km/h)', color='#44aaff')
+    ax2.plot(times, df['wind_speed_10m'], color='#00ff00', linewidth=2, label='Wind Speed (km/h)')
+    ax2.set_ylabel('Wind Speed (km/h)', color='#00ff00')
 
-    # Summary Text
-    summary = f"5-DAY SUMMARY: Max Rain: {max(forecast_rain)}mm | Max Wind: {max(forecast_wind)}km/h"
-    plt.figtext(0.5, 0.02, summary, ha="center", fontsize=10, bbox={"facecolor":"orange", "alpha":0.2, "pad":5})
+    # Storm Tracker Logic (e.g., Wind > 40km/h or Rain > 5mm/hr)
+    storms = df[(df['wind_speed_10m'] > 40) | (df['precipitation'] > 5)]
+    for storm_time in storms['time']:
+        ax1.axvline(storm_time.strftime('%H:00'), color='red', alpha=0.2, linestyle='--')
+
+    # Daily Totals Calculation
+    total_rain = df['precipitation'].sum()
+    max_wind = df['wind_speed_10m'].max()
     
-    plt.title(f"Nelson, NZ Weather Forecast - Updated {datetime.now().strftime('%d %b %H:%M')}")
-    fig.legend(loc="upper left", bbox_to_anchor=(0.1, 0.9), frameon=False)
+    plt.title(f"Nelson Hourly Weather & Storm Tracker\nUpdated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    plt.xticks(times[::3], rotation=45) # Show every 3rd hour for clarity
     
-    plt.tight_layout(rect=[0, 0.05, 1, 0.95])
-    plt.savefig('nelson_forecast.png')
-    print("Success: nelson_forecast.png generated.")
+    summary = f"24HR TOTALS: Rain: {total_rain:.1f}mm | Peak Wind: {max_wind:.1f}km/h"
+    plt.figtext(0.5, 0.01, summary, ha="center", fontsize=10, bbox={"facecolor":"red", "alpha":0.2, "pad":5})
+    
+    plt.tight_layout()
+    plt.savefig('weather_update.png')
 
 if __name__ == "__main__":
-    run_nelson_weather()
+    data = get_weather_data()
+    generate_plot(data.head(24)) # Focus on the next 24 hours
