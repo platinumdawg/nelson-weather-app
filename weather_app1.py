@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import os
 import glob
+import matplotlib.dates as mdates
 
 # Richmond/Nelson, NZ Coordinates
 LAT, LON = -41.3384, 173.1843
@@ -62,6 +63,12 @@ def generate_plot(df):
     fig, ax1 = plt.subplots(figsize=(15, 8))
     ax2 = ax1.twinx()
 
+    ax1.xaxis.set_major_locator(mdates.HourLocator(interval=4))
+    ax1.grid(True, which='major', linestyle='--', alpha=0.3, color='gray')
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%a %d'))
+    plt.xticks(rotation=45)
+    fig.tight_layout() 
+    
     ax1.plot(df['time'], df['rain'], color='#44aaff', alpha=0.6, label='Rain (mm/h)')
     ax1.set_ylabel('Rain (mm)', color='#44aaff', fontsize=12)
     ax1.set_ylim(0, 20)
