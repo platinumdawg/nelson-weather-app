@@ -52,29 +52,30 @@ def get_weather_data():
         print(f"Network error: {e}")
         return None
 
-def generate_plot(df):
-    if df is None or df.empty:
-        print("CRITICAL: Failed to retrieve data. Check your User-Agent header.")
-        return
-        
-    df['time'] = pd.to_datetime(df['time'])
-    
+def your_function_name(df): # Assuming this is inside a function
     plt.style.use('dark_background')
     fig, ax1 = plt.subplots(figsize=(15, 8))
     ax2 = ax1.twinx()
 
+    # Formatting the axis
     ax1.xaxis.set_major_locator(mdates.HourLocator(interval=4))
     ax1.grid(True, which='major', linestyle='--', alpha=0.3, color='gray')
-    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%a %d\n%H'))
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%a %d\n%H:%M'))
     ax1.tick_params(axis='x', labelrotation=0, labelsize=10) 
-for label in ax1.get_xticklabels():
-    label.set_horizontalalignment('center')
-    fig.tight_layout() 
-    ax1.set_ylim(0, df['rain'].max() + 5)
+
+    # INDENT THESE LINES:
+    for label in ax1.get_xticklabels():
+        label.set_horizontalalignment('center')
     
+    # Plotting Rain
     ax1.plot(df['time'], df['rain'], color='#44aaff', alpha=0.6, label='Rain (mm/h)')
     ax1.set_ylabel('Rain (mm)', color='#44aaff', fontsize=12)
-    ax1.set_ylim(0, 20)
+    ax1.set_ylim(0, df['rain'].max() + 5) # Use the dynamic limit here
+
+    # ... Plot your Wind and Temp here ...
+
+    # Move this to the very bottom
+    fig.tight_layout() 
     
    
     ax2.plot(df['time'], df['wind'], color='#00ff00', linewidth=1.5, linestyle='--', label='Wind (km/h)')
