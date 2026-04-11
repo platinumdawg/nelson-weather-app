@@ -36,7 +36,8 @@ def get_weather_data():
             timeseries = data['properties']['timeseries']
             
             rows = []
-            for entry in timeseries[:240]:  
+            for entry in timeseries[:240]:
+                
             row = {
                 'time': entry['time'],
                 'wind': entry['data']['instant']['details']['wind_speed'] * 3.6, # m/s to km/h
