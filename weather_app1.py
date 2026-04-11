@@ -10,8 +10,8 @@ LAT, LON = -41.3384, 173.1843
 RAIN_MAX, WIND_MAX, TEMP_MAX, TEMP_MIN = 10.0, 20.0, 20.0, 0.0
 
 def get_weather_data():
-    # Change this line:
-    url = "https://open-meteo.com" 
+    # Ensure this is exactly: https://open-meteo.com
+    url = "https://open-meteo.com"
     
     params = {
         "latitude": LAT, 
@@ -21,19 +21,20 @@ def get_weather_data():
         "timezone": "Pacific/Auckland", 
         "forecast_days": 5
     }
-    # Open-Meteo doesn't actually require the browser header, 
-    # but it doesn't hurt to keep it.
+    
     try:
+        # We removed 'headers=headers' here
         response = requests.get(url, params=params, timeout=20)
         
         if response.status_code == 200:
-            # The 'hourly' key contains the lists, we wrap it in a DataFrame
             return pd.DataFrame(response.json()['hourly'])
         else:
-            print(f"Server error {response.status_code}: {response.text}")
+            # This will help you see if it's a 403 Forbidden or 400 Bad Request
+            print(f"Server returned {response.status_code}. Content: {response.text[:100]}")
     except Exception as e:
         print(f"Connection failed: {e}")
     return None
+
 
 
 def generate_plot(df):
