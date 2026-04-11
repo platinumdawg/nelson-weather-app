@@ -4,3 +4,8 @@ numpy
 matplotlib
 meteostat
 scikit-learn
+requests
+pandas
+matplotlib
+openmeteo-sdk
+retry-requests
