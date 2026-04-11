@@ -6,6 +6,14 @@ import os
 import glob
 import matplotlib.dates as mdates
 import tkinter as tk
+from datetime import datetime
+import pytz
+
+nz_tz = pytz.timezone('Pacific/Auckland')
+current_time = datetime.now(nz_tz).strftime('%d %b %H:%M')
+
+plt.title(f"Nelson/Richmond Forecast (Met.no Data)\nUpdated: {current_time}", fontsize=16)
+
 
 # Richmond/Nelson, NZ Coordinates
 LAT, LON = -41.3384, 173.1843
