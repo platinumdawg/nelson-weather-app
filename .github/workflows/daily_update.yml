@@ -38,8 +38,19 @@ jobs:
           git commit -m "Hourly update" || echo "No changes"
           git push
 
-      - name: Install dependencies
-        run: sudo apt-get install -y xvfb
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb python3-tk
 
       - name: Run Weather App
         run: xvfb-run python weather_app1.py
