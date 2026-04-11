@@ -66,6 +66,7 @@ def generate_plot(df):
     # Rain as bars (better for visibility)
     ax1.plot(df['time'], df['rain'], color='#44aaff', alpha=0.6, label='Rain (mm/h)')
     ax1.set_ylabel('Rain (mm)', color='#44aaff', fontsize=12)
+    ax1.set_ylim(0, 20)
     
     # Temp and Wind as lines
     ax2.plot(df['time'], df['temp'], color='#ff9900', linewidth=2.5, label='Temp (°C)')
