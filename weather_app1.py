@@ -11,10 +11,10 @@ LOCATIONS = [
 ]
 
 # Thresholds
-RAIN_MAX = 10
-WIND_MAX = 20
-TEMP_MAX = 20
-TEMP_MIN = 0
+RAIN_MAX = 10    # mm/h
+WIND_MAX = 20    # km/h
+TEMP_MAX = 20    # °C
+TEMP_MIN = 0     # °C
 
 def get_weather_data():
     all_dfs = []
@@ -40,7 +40,7 @@ def generate_plot(df):
     fig, ax1 = plt.subplots(figsize=(15, 8))
     ax2 = ax1.twinx()
 
-    # Time formatting for Day/Night labels
+    # Create Day/Night Labels
     def format_time(t):
         if t.hour == 12: return f"{t.strftime('%a')}\nDay"
         if t.hour == 0: return f"{t.strftime('%a')}\nNight"
@@ -49,33 +49,39 @@ def generate_plot(df):
     time_labels = [format_time(t) for t in df['time']]
     tick_indices = [i for i, label in enumerate(time_labels) if label != ""]
 
-    # --- PLOTTING DATA ---
+    # --- PLOT MAIN DATA ---
     ax1.plot(df['time'], df['precipitation'], color='#44aaff', linewidth=2, label='Rain (mm/h)')
     ax2.plot(df['time'], df['wind_speed_10m'], color='#00ff00', linewidth=2, label='Wind (km/h)')
     ax2.plot(df['time'], df['temperature_2m'], color='#ff9900', linewidth=2.5, label='Temp (°C)')
 
-    # --- DYNAMIC WARNING LINES ---
-    # Only show if data exceeds threshold
+    # --- DYNAMIC ALERT LINES (Hidden unless hit) ---
+    # Rain Alert
     if df['precipitation'].max() >= RAIN_MAX:
-        ax1.axhline(y=RAIN_MAX, color='cyan', linestyle='--', alpha=0.7, label='RAIN ALERT (>10mm)')
+        ax1.axhline(y=RAIN_MAX, color='cyan', linestyle='--', alpha=0.6, label='RAIN ALERT (>10mm)')
         ax1.fill_between(df['time'], df['precipitation'], RAIN_MAX, where=(df['precipitation'] >= RAIN_MAX), color='cyan', alpha=0.2)
 
+    # Wind Alert
     if df['wind_speed_10m'].max() >= WIND_MAX:
-        ax2.axhline(y=WIND_MAX, color='lime', linestyle='--', alpha=0.7, label='WIND ALERT (>20kmh)')
+        ax2.axhline(y=WIND_MAX, color='lime', linestyle='--', alpha=0.6, label='WIND ALERT (>20km/h)')
         ax2.fill_between(df['time'], df['wind_speed_10m'], WIND_MAX, where=(df['wind_speed_10m'] >= WIND_MAX), color='lime', alpha=0.2)
 
+    # Temp High Alert
     if df['temperature_2m'].max() >= TEMP_MAX:
         ax2.axhline(y=TEMP_MAX, color='red', linestyle=':', alpha=0.8, label='HEAT ALERT (>20°C)')
-        
+
+    # Temp Low (Frost) Alert
     if df['temperature_2m'].min() <= TEMP_MIN:
         ax2.axhline(y=TEMP_MIN, color='white', linestyle=':', alpha=0.8, label='FROST ALERT (<0°C)')
 
-    # --- FINAL FORMATTING ---
-    plt.title(f"Nelson 5-Day Smart Forecast\nAlerts appear only when thresholds are breached", fontsize=14)
+    # --- AXIS & LABELS ---
+    plt.title(f"Nelson 5-Day Smart Forecast\nUpdated: {datetime.now().strftime('%d %b %H:%M')}", fontsize=14)
     ax1.set_xticks(df['time'][tick_indices])
     ax1.set_xticklabels([time_labels[i] for i in tick_indices])
     
-    # Legend - Automatically updates based on which alerts are visible
+    ax1.set_ylabel('Rain (mm)', color='#44aaff', fontweight='bold')
+    ax2.set_ylabel('Wind (km/h) / Temp (°C)', color='#ff9900', fontweight='bold')
+
+    # Legend (only shows active alerts)
     h1, l1 = ax1.get_legend_handles_labels()
     h2, l2 = ax2.get_legend_handles_labels()
     ax1.legend(h1 + h2, l1 + l2, loc='upper left', frameon=True, facecolor='black')
