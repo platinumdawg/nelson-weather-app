@@ -99,8 +99,8 @@ def run_nelson_weather():
     labels = [l.get_label() for l in lines]
     ax1.legend(lines, labels, loc='upper left', facecolor='#333', edgecolor='white')
 
-    plt.tight_layout()
-    plt.plt.savefig('nelson_forecast.png')
+    ply.tight_layout()
+    plt.savefig('nelson_forecast.png')
 
 if __name__ == "__main__":
     run_nelson_weather()
