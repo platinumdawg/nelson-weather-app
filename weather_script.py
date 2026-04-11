@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
-from meteostat import Point, Daily 
+from meteostat import Point, daily 
 from sklearn.ensemble import RandomForestClassifier
 import warnings
 import os
