@@ -38,18 +38,12 @@ jobs:
           git commit -m "Hourly update" || echo "No changes"
           git push
 
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.9'
-
-      - name: Install System Dependencies
+      - name: Run Weather App with Virtual Display
+        env:
+          DISPLAY: :99
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb python3-tk
-
-      - name: Run Weather App
-        run: xvfb-run python weather_app1.py
+          Xvfb :99 -screen 0 1024x768x24 &
+          sleep 3
+          python weather_app1.py
