@@ -1,76 +1,56 @@
-import openmeteo_requests
 import requests
 import pandas as pd
-from retry_requests import retry
 import matplotlib.pyplot as plt
 from datetime import datetime
 import os
 import glob
 
-# 1. Setup the Open-Meteo API client with retry only (avoiding file cache issues)
-retry_session = retry(requests.Session(), retries=5, backoff_factor=0.2)
-openmeteo = openmeteo_requests.Client(session=retry_session)
-
-# Richmond Coordinates
-LAT, LON = -41.3384, 173.1843
+# 1. Setup
+API_KEY = os.getenv('WEATHER_API_KEY')
+LOCATION = "-41.3384,173.1843" # Richmond, NZ Coordinates
 
 def get_weather_data():
-    url = "https://open-meteo.com"
-    params = {
-        "latitude": LAT,
-        "longitude": LON,
-        "hourly": ["precipitation", "wind_speed_10m", "temperature_2m"],
-        "wind_speed_unit": "kmh",
-        "timezone": "Pacific/Auckland",
-        "forecast_days": 5
-    }
+    if not API_KEY:
+        print("Error: WEATHER_API_KEY not found in environment secrets!")
+        return None
+        
+    # WeatherAPI 7-day forecast endpoint
+    url = f"http://weatherapi.com{API_KEY}&q={LOCATION}&days=5&aqi=no&alerts=no"
     
     try:
-        responses = openmeteo.weather_api(url, params=params)
-        response = responses[0]
-
-        # Process hourly data
-        hourly = response.Hourly()
-        # Note: Indexing must match the order in 'params' above
-        precip = hourly.Variables(0).ValuesAsNumpy()
-        wind = hourly.Variables(1).ValuesAsNumpy()
-        temp = hourly.Variables(2).ValuesAsNumpy()
-
-        # Generate the time range
-        start = pd.to_datetime(hourly.Time(), unit="s", utc=True).tz_convert("Pacific/Auckland")
-        end = pd.to_datetime(hourly.TimeEnd(), unit="s", utc=True).tz_convert("Pacific/Auckland")
-        
-        hourly_data = {
-            "date": pd.date_range(
-                start=start,
-                end=end,
-                freq=pd.Timedelta(seconds=hourly.Interval()),
-                inclusive="left"
-            ),
-            "precipitation": precip,
-            "wind_speed_10m": wind,
-            "temperature_2m": temp
-        }
-
-        return pd.DataFrame(data=hourly_data)
+        response = requests.get(url, timeout=20)
+        if response.status_code == 200:
+            data = response.json()
+            hourly_list = []
+            
+            # Extract hourly data from the nested JSON
+            for day in data['forecast']['forecastday']:
+                for hour in day['hour']:
+                    hourly_list.append({
+                        'time': hour['time'],
+                        'temp_c': hour['temp_c'],
+                        'wind_kph': hour['wind_kph'],
+                        'precip_mm': hour['precip_mm']
+                    })
+            return pd.DataFrame(hourly_list)
+        else:
+            print(f"API Error {response.status_code}: {response.text}")
     except Exception as e:
-        print(f"API Client Error: {e}")
-        return None
+        print(f"Request failed: {e}")
+    return None
 
 def generate_plot(df):
-    if df is None or df.empty:
-        print("No data received. GitHub IP likely blocked.")
-        return
-        
+    if df is None or df.empty: return
+    df['time'] = pd.to_datetime(df['time'])
     plt.style.use('dark_background')
     fig, ax1 = plt.subplots(figsize=(15, 8))
     ax2 = ax1.twinx()
 
-    ax1.plot(df['date'], df['precipitation'], color='#44aaff', linewidth=2, label='Rain (mm/h)')
-    ax2.plot(df['date'], df['wind_speed_10m'], color='#00ff00', linewidth=2, label='Wind (km/h)')
-    ax2.plot(df['date'], df['temperature_2m'], color='#ff9900', linewidth=2.5, label='Temp (°C)')
+    ax1.plot(df['time'], df['precip_mm'], color='#44aaff', linewidth=2, label='Rain (mm/h)')
+    ax2.plot(df['time'], df['wind_kph'], color='#00ff00', linewidth=2, label='Wind (km/h)')
+    ax2.plot(df['time'], df['temp_c'], color='#ff9900', linewidth=2.5, label='Temp (°C)')
 
-    plt.title(f"Richmond 5-Day Forecast\nUpdated: {datetime.now().strftime('%d %b %H:%M')}")
+    plt.title(f"Richmond 5-Day Forecast (Source: WeatherAPI)\nUpdated: {datetime.now().strftime('%d %b %H:%M')}")
     
     h1, l1 = ax1.get_legend_handles_labels()
     h2, l2 = ax2.get_legend_handles_labels()
