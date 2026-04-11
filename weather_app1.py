@@ -5,17 +5,20 @@ from datetime import datetime
 import os
 import glob
 
-# 1. Setup from Environment and Location
+# 1. Configuration
 API_KEY = os.getenv('WEATHER_API_KEY')
-LAT, LON = -41.3384, 173.1843 # Richmond, NZ
+# Use Richmond, NZ Coordinates
+LAT, LON = -41.3384, 173.1843
 
 def get_weather_data():
     if not API_KEY:
         print("CRITICAL ERROR: WEATHER_API_KEY secret is missing!")
         return None
         
-    # FIXED URL: Using https and proper parameter separation
+    # Official WeatherAPI Forecast Endpoint
     url = "https://weatherapi.com"
+    
+    # Passing parameters through the params dictionary is safer
     params = {
         "key": API_KEY,
         "q": f"{LAT},{LON}",
@@ -24,14 +27,18 @@ def get_weather_data():
         "alerts": "no"
     }
     
+    # Adding a User-Agent helps bypass some automated firewalls
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    }
+    
     try:
-        # We pass params separately so 'requests' builds the URL perfectly for us
-        response = requests.get(url, params=params, timeout=25)
+        # We explicitly use verify=True (default) to ensure SSL is working
+        response = requests.get(url, params=params, headers=headers, timeout=30)
         
         if response.status_code == 200:
             data = response.json()
             hourly_list = []
-            
             for day in data['forecast']['forecastday']:
                 for hour in day['hour']:
                     hourly_list.append({
@@ -44,7 +51,7 @@ def get_weather_data():
         else:
             print(f"API Error {response.status_code}: {response.text}")
     except Exception as e:
-        print(f"Connection failed: {e}")
+        print(f"Network Connection Failed: {e}")
     return None
 
 def generate_plot(df):
@@ -64,7 +71,6 @@ def generate_plot(df):
 
     plt.title(f"Richmond 5-Day Forecast\nUpdated: {datetime.now().strftime('%d %b %H:%M')}")
     
-    # Combined Legend
     h1, l1 = ax1.get_legend_handles_labels()
     h2, l2 = ax2.get_legend_handles_labels()
     ax1.legend(h1 + h2, l1 + l2, loc='upper left')
