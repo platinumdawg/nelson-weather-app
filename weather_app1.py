@@ -52,6 +52,13 @@ def get_weather_data():
         print(f"Network error: {e}")
         return None
 
+def generate_plot(df):
+    if df is None or df.empty:
+        print("CRITICAL: Failed to retrieve data. Check your User-Agent header.")
+        return
+        
+    df['time'] = pd.to_datetime(df['time'])
+
 def your_function_name(df): # Assuming this is inside a function
     plt.style.use('dark_background')
     fig, ax1 = plt.subplots(figsize=(15, 8))
