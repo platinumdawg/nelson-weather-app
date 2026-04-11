@@ -36,7 +36,7 @@ def get_weather_data():
             timeseries = data['properties']['timeseries']
             
             rows = []
-            for entry in timeseries[:48]:  # Get next 5 days (approx 120 hours)
+            for entry in timeseries[:48]:  
                 row = {
                     'time': entry['time'],
                     'wind': entry['data']['instant']['details']['wind_speed'] * 3.6, # Convert m/s to km/h
@@ -65,7 +65,7 @@ def generate_plot(df):
     fig, ax1 = plt.subplots(figsize=(15, 8))
     ax2 = ax1.twinx()
 
-    ax1.xaxis.set_major_locator(mdates.HourLocator(interval=4))
+    ax1.xaxis.set_major_locator(mdates.HourLocator(interval=5))
     ax1.grid(True, which='major', linestyle='--', alpha=0.3, color='gray')
     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%a %d %I %p'))
     ax1.tick_params(axis='x', rotation=45)
