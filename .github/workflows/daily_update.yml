@@ -21,7 +21,7 @@ jobs:
         run: pip install requests pandas matplotlib
 
       - name: Run weather script
-        run: python weather_script.py
+        run: python weather_app1.py
 
       - name: Commit and push changes
         run: |
