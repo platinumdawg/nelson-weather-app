@@ -63,23 +63,26 @@ def generate_plot(df):
     fig, ax1 = plt.subplots(figsize=(15, 8))
     ax2 = ax1.twinx()
 
-    # Rain as bars (better for visibility)
     ax1.plot(df['time'], df['rain'], color='#44aaff', alpha=0.6, label='Rain (mm/h)')
     ax1.set_ylabel('Rain (mm)', color='#44aaff', fontsize=12)
     ax1.set_ylim(0, 20)
     
-    # Temp and Wind as lines
    
     ax2.plot(df['time'], df['wind'], color='#00ff00', linewidth=1.5, linestyle='--', label='Wind (km/h)')
-    ax2.set_ylabel('Temp (°C) / Wind (km/h)', color='#ff9900', fontsize=12)
+    ax2.set_ylabel('Wind (km/h)', color='#ff9900', fontsize=12)
 
+    ax3 = ax1.twinx()
+    ax3.spines['right'].set_position(('outward', 60))
+    ax3.scatter(df['time'], df['temp'], color='#ff9900', s=30, label='Temp (°C)')
+    ax3.set_ylabel('Temp (°C)', color='#ff9900', fontsize=12)
 
     plt.title(f"Nelson/Richmond Forecast (Met.no Data)\nUpdated: {datetime.now().strftime('%d %b %H:%M')}", fontsize=16)
     
     # Legend
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
+    lines3, labels3 = ax3.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2 + lines3, labels1 + labels2 + labels3, loc='upper left')
 
     plt.tight_layout()
     plt.savefig("weather_latest.png")
