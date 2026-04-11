@@ -1,39 +1,32 @@
-name: Update Weather Forecast
+name: Hourly Weather Update
 
 on:
   schedule:
-    - cron: '0 20 * * *'
-  workflow_dispatch:
+    - cron: '0 * * * *' # Runs every hour on the hour
+  workflow_dispatch: # Allows you to run it manually
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-      - name: Debug - List Files
-        run: ls -R  # This will show us exactly what the file is named in the logs
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - name: Set up Python
+        uses: actions/setup-python@v2
         with:
           python-version: '3.9'
 
       - name: Install dependencies
-        run: |
-          pip install requests pandas numpy matplotlib meteostat scikit-learn
+        run: pip install requests pandas matplotlib
 
-      - name: Run script
-        # We use ./ to tell it to look in the current folder
-        run: python weather_app1.py 
+      - name: Run weather script
+        run: python weather_script.py
 
-      - name: Commit and push chart
+      - name: Commit and push changes
         run: |
           git config --global user.name "WeatherBot"
           git config --global user.email "bot@github.com"
-          git add nelson_forecast.png
-          git commit -m "Update weather chart" || exit 0
+          git add weather_update.png
+          git commit -m "Hourly weather update" || exit 0
           git push
