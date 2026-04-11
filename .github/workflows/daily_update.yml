@@ -24,13 +24,11 @@ jobs:
         run: python weather_app1.py
 
       - name: Commit and push changes
-    
+  
         run: |
           git config --global user.name "WeatherBot"
           git config --global user.email "bot@github.com"
-          # This adds the file even if it's "new" or was deleted
-          git add -A 
-          # This prevents the error if there are no changes to the image
-          git commit -m "Hourly weather update" || echo "No changes to commit"
+          git add -A
+          git commit -m "Hourly weather update and cleanup" || echo "No changes"
           git push
 
