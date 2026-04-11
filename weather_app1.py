@@ -65,18 +65,13 @@ def generate_plot(df):
     fig, ax1 = plt.subplots(figsize=(15, 8))
     ax2 = ax1.twinx()
 
-# Set ticks to every 3 hours (8 per day)
-ax1.xaxis.set_major_locator(mdates.HourLocator(interval=3))
 
-# Format to be readable
-ax1.xaxis.set_major_formatter(mdates.DateFormatter('%a %d\n%I %p'))
-
-# Prevent overlapping
-plt.gcf().autofmt_xdate()
-    
+    ax1.xaxis.set_major_locator(mdates.HourLocator(interval=3))
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%a %d\n%I %p'))
     ax1.plot(df['time'], df['rain'], color='#44aaff', alpha=0.6, label='Rain (mm/h)')
     ax1.set_ylabel('Rain (mm)', color='#44aaff', fontsize=12)
     ax1.set_ylim(0, 20)
+    plt.gcf().autofmt_xdate()
     
    
     ax2.plot(df['time'], df['wind'], color='#00ff00', linewidth=1.5, linestyle='--', label='Wind (km/h)')
