@@ -28,7 +28,7 @@ jobs:
 
       - name: Run script
         # We use ./ to tell it to look in the current folder
-        run: python weather_app.py 
+        run: python weather_app1.py 
 
       - name: Commit and push chart
         run: |
